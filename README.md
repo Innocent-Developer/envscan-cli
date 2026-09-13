@@ -1,10 +1,10 @@
-# env-doctor
+# envscan-cli
 
 > Audit your environment variables before they break production.
 
 ## The Problem
 
-Environment variables rot silently. A teammate adds `process.env.STRIPE_KEY` in a new module but forgets to add it to `.env` or `.env.example`, and it doesn't surface until a deploy fails. Old keys linger in `.env` long after the code that used them is gone. `env-doctor` scans your codebase and your `.env` files and tells you exactly where they've drifted apart.
+Environment variables rot silently. A teammate adds `process.env.STRIPE_KEY` in a new module but forgets to add it to `.env` or `.env.example`, and it doesn't surface until a deploy fails. Old keys linger in `.env` long after the code that used them is gone. `envscan-cli` scans your codebase and your `.env` files and tells you exactly where they've drifted apart.
 
 ## What It Catches
 
@@ -17,17 +17,17 @@ Environment variables rot silently. A teammate adds `process.env.STRIPE_KEY` in 
 No install required — run it directly against any project:
 
 ```bash
-npx env-doctor
+npx envscan-cli
 ```
 
 Or install it as a dev dependency:
 
 ```bash
-npm install --save-dev env-doctor
+npm install --save-dev envscan-cli
 ```
 
 ```bash
-npx env-doctor --dir ./backend
+npx envscan-cli --dir ./backend
 ```
 
 ## Options
@@ -43,13 +43,13 @@ npx env-doctor --dir ./backend
 
 ## CI/CD Usage
 
-`env-doctor` exits with code `1` whenever any **missing** variables are found, making it a natural pre-deploy gate. Undocumented and unused variables are reported but do not fail the build.
+`envscan-cli` exits with code `1` whenever any **missing** variables are found, making it a natural pre-deploy gate. Undocumented and unused variables are reported but do not fail the build.
 
 Example GitHub Actions step:
 
 ```yaml
 - name: Audit environment variables
-  run: npx env-doctor --dir . --ignore-unused
+  run: npx envscan-cli --dir . --ignore-unused
 ```
 
 If a required variable is missing, the job fails before your app ever reaches a broken deployment.

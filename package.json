@@ -1,11 +1,11 @@
 {
-  "name": "env-doctor",
+ "name": "envscan-cli",
   "version": "1.0.0",
   "description": "Audit your .env variables against your codebase. Catch missing, undocumented and unused vars before they break production.",
   "type": "module",
   "main": "src/index.js",
   "bin": {
-    "env-doctor": "./bin/env-doctor.js"
+    "env-doctor": "bin/env-doctor.js"
   },
   "files": [
     "bin",
