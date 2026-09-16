@@ -26,7 +26,7 @@ const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'
 const program = new Command();
 
 program
-  .name('env-doctor')
+  .name('envscan-cli')
   .description('Audit environment variables in a Node.js project')
   .version(pkg.version, '-v, --version', 'Show version')
   .option('-d, --dir <path>', 'Directory to scan', process.cwd())
@@ -42,22 +42,22 @@ program
     'after',
     `
 Examples:
-  $ npx env-doctor
-  $ npx env-doctor --dir ./backend
-  $ npx env-doctor --dir ./app --example .env.example.ci
-  $ npx env-doctor --fix
-  $ npx env-doctor --json > report.json
-  $ npx env-doctor --watch
-  $ npx env-doctor init-ci
+  $ npx envscan-cli
+  $ npx envscan-cli --dir ./backend
+  $ npx envscan-cli --dir ./app --example .env.example.ci
+  $ npx envscan-cli --fix
+  $ npx envscan-cli --json > report.json
+  $ npx envscan-cli --watch
+  $ npx envscan-cli init-ci
 `
   );
 
 program
   .command('init-ci')
-  .description('Generate a GitHub Actions workflow that runs env-doctor on push/PR')
+  .description('Generate a GitHub Actions workflow that runs envscan-cli on push/PR')
   .action(function () {
     // Reuses the root -d/--dir option rather than redeclaring it, so
-    // `env-doctor init-ci --dir X` and `env-doctor --dir X init-ci`
+    // `envscan-cli init-ci --dir X` and `envscan-cli --dir X init-ci`
     // both resolve to the same directory instead of silently colliding.
     const globalOpts = this.optsWithGlobals();
     const targetDir = path.resolve(globalOpts.dir || process.cwd());
@@ -222,7 +222,7 @@ async function runAudit(targetDir, options, config, jsonMode) {
 }
 
 function printBanner(version) {
-  const banner = boxen(`env-doctor v${version}\nAudit your .env`, {
+  const banner = boxen(`envscan-cli v${version}\nAudit your .env`, {
     padding: 1,
     borderColor: 'cyan',
     borderStyle: 'round',

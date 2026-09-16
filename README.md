@@ -4,13 +4,15 @@
 
 ## The Problem
 
-Environment variables rot silently. A teammate adds `process.env.STRIPE_KEY` in a new module but forgets to add it to `.env` or `.env.example`, and it doesn't surface until a deploy fails. Old keys linger in `.env` long after the code that used them is gone. `envscan-cli` scans your codebase and your `.env` files and tells you exactly where they've drifted apart.
+Environment variables rot silently. A teammate adds `process.env.STRIPE_KEY` in a new module but forgets to add it to `.env` or `.env.example`, and it doesn't surface until a deploy fails. Old keys linger in `.env` long after the code that used them is gone. Real secrets end up sitting in a `.env` that was never actually gitignored. `envscan-cli` scans your codebase and your `.env` files and tells you exactly where they've drifted apart — and catches the security footguns along the way.
 
 ## What It Catches
 
 - ✖ **Missing** — referenced in code via `process.env.X`, but not defined in any `.env` file
 - ⚠ **Undocumented** — defined in `.env`, but missing from `.env.example` (so new contributors won't know it exists)
 - ○ **Unused** — defined in `.env`, but never referenced anywhere in code
+- 🔒 **Potential secret leaks** — real-looking credential values sitting in `.env` (known formats + high-entropy heuristics)
+- 🔓 **Gitignore hygiene** — warns if `.env` isn't actually covered by `.gitignore`
 
 ## Install & Run
 
@@ -36,16 +38,89 @@ npx envscan-cli --dir ./backend
 |---|---|
 | `-d, --dir <path>` | Directory to scan (default: current working directory) |
 | `-e, --example <path>` | Custom path to your `.env.example` file |
+| `-c, --config <path>` | Path to a specific config file (overrides auto-detection) |
 | `--ignore-unused` | Suppress unused variable warnings |
 | `--no-banner` | Hide the startup banner |
+| `--fix` | Auto-fix: add missing/undocumented vars into `.env.example` as placeholders |
+| `--json` | Output a machine-readable JSON report instead of the CLI report |
+| `--no-secrets` | Disable secret-leak detection for this run |
+| `-w, --watch` | Watch the project and re-run automatically on every change |
 | `-v, --version` | Show the installed version |
 | `-h, --help` | Show help and usage examples |
 
+## Config File
+
+Drop an `envscan-cli.config.js` (or `.envscan-clirc.json`) in your project root and envscan-cli picks it up automatically — no flags required. CLI flags always override the config file.
+
+```js
+// envscan-cli.config.js
+export default {
+  // Variable names/patterns to exclude from every check.
+  // Trailing wildcard supported: "LEGACY_*" matches LEGACY_TOKEN, LEGACY_URL, ...
+  ignore: ['LEGACY_*', 'DEBUG'],
+
+  // Path to your .env.example file, relative to the scanned directory.
+  exampleFile: '.env.example',
+
+  // Same as passing --ignore-unused on every run.
+  ignoreUnused: false,
+
+  // Scan real .env values for things that look like live credentials.
+  secretDetection: true,
+};
+```
+
+A ready-to-copy version ships at `envscan-cli.config.example.js`.
+
+## Auto-Fix
+
+```bash
+npx envscan-cli --fix
+```
+
+Appends placeholder entries (`VAR_NAME=`) to `.env.example` for anything undocumented or missing, then re-runs the diff so the report reflects the fix. **Never touches your real `.env`** — only the committed example file, which should never hold real values.
+
+## JSON Output
+
+```bash
+npx envscan-cli --json > report.json
+```
+
+Emits a single JSON object (`missing`, `undocumented`, `unused`, `secrets`, `gitignoreProtectsEnv`, `meta`) with no ANSI codes or banner — safe to pipe into other tooling, dashboards, or a CI annotation step.
+
 ## CI/CD Usage
 
-`envscan-cli` exits with code `1` whenever any **missing** variables are found, making it a natural pre-deploy gate. Undocumented and unused variables are reported but do not fail the build.
+`envscan-cli` exits with code `1` whenever any **missing** variables are found, making it a natural pre-deploy gate. Undocumented, unused, and secret findings are reported but do not fail the build by default.
 
-Example GitHub Actions step:
+Generate a ready-to-commit GitHub Actions workflow automatically:
+
+```bash
+npx envscan-cli init-ci
+```
+
+This writes `.github/workflows/envscan-cli.yml`:
+
+```yaml
+name: envscan-cli
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  audit-env:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Audit environment variables
+        run: npx envscan-cli --dir . --ignore-unused
+```
+
+Or wire it in by hand:
 
 ```yaml
 - name: Audit environment variables
@@ -53,6 +128,23 @@ Example GitHub Actions step:
 ```
 
 If a required variable is missing, the job fails before your app ever reaches a broken deployment.
+
+## Watch Mode
+
+```bash
+npx envscan-cli --watch
+```
+
+Re-runs the full audit automatically whenever a source file or `.env` file changes — useful while actively wiring up a new integration.
+
+## Secret-Leak Detection
+
+Every real `.env`/`.env.local`/`.env.development`/`.env.production` file (never `.env.example`) is scanned for:
+
+- Known credential formats (AWS access keys, Stripe live keys, GitHub tokens, Slack tokens, Google API keys, PEM private key blocks, JWTs)
+- High-entropy values on suspiciously named variables (`*SECRET*`, `*KEY*`, `*TOKEN*`, `*PASSWORD*`, etc.)
+
+Only the variable **name** and the matched reason are ever printed — never the value. envscan-cli also checks whether `.env` is actually covered by your `.gitignore` and warns if it isn't. Disable this pass with `--no-secrets` or `secretDetection: false` in your config.
 
 ## Example Output
 

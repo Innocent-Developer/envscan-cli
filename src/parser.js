@@ -11,7 +11,7 @@ const ENV_FILE_NAMES = ['.env', '.env.local', '.env.development', '.env.producti
 
 /**
  * Parses a single .env style file and returns the set of variable
- * NAMES defined in it. Values are intentionally discarded — env-doctor
+ * NAMES defined in it. Values are intentionally discarded — envscan-cli
  * never needs to read secret values, only which keys exist.
  *
  * @param {string} filePath - absolute or relative path to a .env file
