@@ -11,12 +11,14 @@ import ora from 'ora';
 import { parseEnvFile, parseAllEnvFiles } from '../src/parser.js';
 import { scanCodebase } from '../src/scanner.js';
 import { diffEnvVars } from '../src/diff.js';
-import { printReport, printJsonReport } from '../src/reporter.js';
+import { printReport, printJsonReport, evaluateFailure } from '../src/reporter.js';
 import { loadConfig } from '../src/config.js';
+import { loadIgnoreFile } from '../src/ignorefile.js';
 import { autoFixExampleFile } from '../src/fixer.js';
 import { generateGitHubAction } from '../src/ci.js';
 import { startWatch } from '../src/watch.js';
 import { detectSecretLeaks, isEnvGitIgnored } from '../src/secrets.js';
+import { findClosestMatch } from '../src/suggest.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +40,8 @@ program
   .option('--json', 'Output a machine-readable JSON report instead of the CLI report', false)
   .option('--no-secrets', 'Disable secret-leak detection')
   .option('-w, --watch', 'Watch for file changes and re-run automatically', false)
+  .option('--strict', 'Fail the build on undocumented and unused vars too, not just missing', false)
+  .option('--suggest', 'Suggest the closest .env.example name for each missing var (typo detection)', false)
   .addHelpText(
     'after',
     `
@@ -48,6 +52,8 @@ Examples:
   $ npx envscan-cli --fix
   $ npx envscan-cli --json > report.json
   $ npx envscan-cli --watch
+  $ npx envscan-cli --strict
+  $ npx envscan-cli --suggest
   $ npx envscan-cli init-ci
 `
   );
@@ -110,6 +116,11 @@ async function main(options) {
     process.exit(1);
     return;
   }
+
+  // .envscanignore is a global, always-applied ignore list — merge its
+  // patterns in alongside whatever the config file specified.
+  const { patterns: ignoreFilePatterns } = loadIgnoreFile(targetDir);
+  config.ignore = [...new Set([...config.ignore, ...ignoreFilePatterns])];
 
   const runOnce = async () => {
     await runAudit(targetDir, options, config, jsonMode);
@@ -187,6 +198,16 @@ async function runAudit(targetDir, options, config, jsonMode) {
     }
   }
 
+  // --suggest: fuzzy-match each missing var against documented (.env.example)
+  // names so a typo/rename shows up as "did you mean X?" instead of a dead
+  // end. Re-reads .env.example so this reflects any --fix additions above.
+  if (options.suggest && diffResult.missing.length > 0) {
+    const currentExampleVars = [...parseEnvFile(examplePath)];
+    for (const item of diffResult.missing) {
+      item.suggestion = findClosestMatch(item.name, currentExampleVars);
+    }
+  }
+
   // Secret-leak detection across all real .env* files (never .env.example)
   let secrets = [];
   let gitignoreOk = null;
@@ -209,14 +230,16 @@ async function runAudit(targetDir, options, config, jsonMode) {
   }
 
   const meta = { filesScanned, timeMs, dir: targetDir };
+  const reportOptions = { ignoreUnused: config.ignoreUnused, secrets, gitignoreOk, strict: options.strict };
 
   if (jsonMode) {
-    printJsonReport(diffResult, meta, { secrets, gitignoreOk });
+    printJsonReport(diffResult, meta, reportOptions);
   } else {
-    printReport(diffResult, meta, { ignoreUnused: config.ignoreUnused, secrets, gitignoreOk });
+    printReport(diffResult, meta, reportOptions);
   }
 
-  if (diffResult.missing.length > 0 && !options.watch) {
+  const { shouldFail } = evaluateFailure(diffResult, { strict: options.strict, ignoreUnused: config.ignoreUnused });
+  if (shouldFail && !options.watch) {
     process.exitCode = 1;
   }
 }

@@ -3,19 +3,39 @@ import chalk from 'chalk';
 const DIVIDER = '─'.repeat(55);
 
 /**
+ * Determines whether the run should fail (exit 1), given strict mode.
+ * Missing vars always fail. In --strict, undocumented and unused vars
+ * fail too (unused only if not separately suppressed via --ignore-unused).
+ *
+ * @param {{ missing: any[], undocumented: any[], unused: any[] }} diffResult
+ * @param {{ strict?: boolean, ignoreUnused?: boolean }} [options]
+ * @returns {{ shouldFail: boolean, reasons: string[] }}
+ */
+export function evaluateFailure(diffResult, options = {}) {
+  const { strict = false, ignoreUnused = false } = options;
+  const reasons = [];
+
+  if (diffResult.missing.length > 0) reasons.push('missing');
+  if (strict && diffResult.undocumented.length > 0) reasons.push('undocumented');
+  if (strict && !ignoreUnused && diffResult.unused.length > 0) reasons.push('unused');
+
+  return { shouldFail: reasons.length > 0, reasons };
+}
+
+/**
  * Prints the final audit report to the terminal (human-readable mode).
  *
  * @param {{
- *   missing: { name: string, locations: string[] }[],
+ *   missing: { name: string, locations: string[], suggestion?: string|null }[],
  *   undocumented: { name: string }[],
  *   unused: { name: string }[]
  * }} diffResult
  * @param {{ filesScanned: number, timeMs: number, dir: string }} meta
- * @param {{ ignoreUnused?: boolean, secrets?: { name: string, reason: string }[], gitignoreOk?: boolean|null }} [options]
+ * @param {{ ignoreUnused?: boolean, secrets?: { name: string, reason: string }[], gitignoreOk?: boolean|null, strict?: boolean }} [options]
  */
 export function printReport(diffResult, meta, options = {}) {
   const { missing, undocumented, unused } = diffResult;
-  const { ignoreUnused = false, secrets = [], gitignoreOk = null } = options;
+  const { ignoreUnused = false, secrets = [], gitignoreOk = null, strict = false } = options;
 
   const showUnused = !ignoreUnused && unused.length > 0;
   const hasAnyIssues = missing.length > 0 || undocumented.length > 0 || showUnused || secrets.length > 0;
@@ -48,7 +68,13 @@ export function printReport(diffResult, meta, options = {}) {
     console.log('');
   }
 
-  printSummary({ missing, undocumented, unused: showUnused ? unused : [], secrets }, meta);
+  const { shouldFail, reasons } = evaluateFailure(diffResult, { strict, ignoreUnused });
+  if (strict && shouldFail && !reasons.every((r) => r === 'missing')) {
+    console.log(chalk.red.bold(`✖ --strict: failing build due to ${reasons.join(', ')}`));
+    console.log('');
+  }
+
+  printSummary({ missing, undocumented, unused: showUnused ? unused : [], secrets }, meta, { strict });
 }
 
 function printMissingSection(missing) {
@@ -58,6 +84,9 @@ function printMissingSection(missing) {
     console.log(chalk.red(`❯ ${item.name}`));
     for (const location of item.locations) {
       console.log(chalk.dim(`    ${location}`));
+    }
+    if (item.suggestion) {
+      console.log(chalk.cyan(`    💡 Did you mean ${chalk.bold(item.suggestion)} instead of ${item.name}?`));
     }
   }
   console.log('');
@@ -90,7 +119,7 @@ function printSecretsSection(secrets) {
   console.log('');
 }
 
-function printSummary({ missing, undocumented, unused, secrets }, meta) {
+function printSummary({ missing, undocumented, unused, secrets }, meta, { strict = false } = {}) {
   const { filesScanned, timeMs } = meta;
   const seconds = (timeMs / 1000).toFixed(1);
 
@@ -104,7 +133,7 @@ function printSummary({ missing, undocumented, unused, secrets }, meta) {
   }
 
   console.log(chalk.dim(DIVIDER));
-  console.log(parts.join('  ·  '));
+  console.log(parts.join('  ·  ') + (strict ? chalk.dim('  (strict mode)') : ''));
   console.log(chalk.dim(`Scanned ${chalk.bold(String(filesScanned))} files in ${seconds}s`));
   console.log(chalk.dim(DIVIDER));
   console.log('');
@@ -116,14 +145,17 @@ function printSummary({ missing, undocumented, unused, secrets }, meta) {
  *
  * @param {ReturnType<typeof import('./diff.js').diffEnvVars>} diffResult
  * @param {{ filesScanned: number, timeMs: number, dir: string }} meta
- * @param {{ secrets?: { name: string, reason: string }[], gitignoreOk?: boolean|null }} [options]
+ * @param {{ secrets?: { name: string, reason: string }[], gitignoreOk?: boolean|null, strict?: boolean, ignoreUnused?: boolean }} [options]
  * @returns {object}
  */
 export function buildJsonReport(diffResult, meta, options = {}) {
-  const { secrets = [], gitignoreOk = null } = options;
+  const { secrets = [], gitignoreOk = null, strict = false, ignoreUnused = false } = options;
+  const { shouldFail, reasons } = evaluateFailure(diffResult, { strict, ignoreUnused });
 
   return {
-    ok: diffResult.missing.length === 0,
+    ok: !shouldFail,
+    strict,
+    failReasons: reasons,
     missing: diffResult.missing,
     undocumented: diffResult.undocumented,
     unused: diffResult.unused,

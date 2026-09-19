@@ -1,0 +1,10 @@
+# .envscanignore
+# Copy this to ".envscanignore" (no ".example") in your project root.
+# One variable name or wildcard pattern per line — same syntax as .gitignore.
+# Applied globally, on top of any `ignore` array in your config file.
+
+# Exact name
+DEBUG
+
+# Trailing wildcard — matches LEGACY_TOKEN, LEGACY_URL, etc.
+LEGACY_*

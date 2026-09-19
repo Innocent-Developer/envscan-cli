@@ -1,6 +1,6 @@
 {
   "name": "envscan-cli",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Audit your .env variables against your codebase. Catch missing, undocumented and unused vars — with auto-fix, watch mode, JSON/CI output, secret-leak detection and config-driven ignore rules.",
   "type": "module",
   "main": "src/index.js",

@@ -45,6 +45,8 @@ npx envscan-cli --dir ./backend
 | `--json` | Output a machine-readable JSON report instead of the CLI report |
 | `--no-secrets` | Disable secret-leak detection for this run |
 | `-w, --watch` | Watch the project and re-run automatically on every change |
+| `--strict` | Fail the build on undocumented and unused vars too, not just missing |
+| `--suggest` | Suggest the closest `.env.example` name for each missing var (typo detection) |
 | `-v, --version` | Show the installed version |
 | `-h, --help` | Show help and usage examples |
 
@@ -72,6 +74,44 @@ export default {
 
 A ready-to-copy version ships at `envscan-cli.config.example.js`.
 
+## `.envscanignore`
+
+A `.gitignore`-style file for globally ignored variable names, no config file required:
+
+```
+# .envscanignore
+DEBUG
+LEGACY_*
+```
+
+One name or wildcard pattern per line, `#` comments allowed. Patterns here are merged with the `ignore` array from your config file (if you have one) — use whichever is more convenient, or both. A ready-to-copy version ships at `envscanignore.example`.
+
+## Strict Mode
+
+```bash
+npx envscan-cli --strict
+```
+
+By default only **missing** variables fail the build (exit code `1`) — undocumented and unused vars are reported but treated as advisory. `--strict` raises the bar: the build also fails if any variable is undocumented or unused, even when nothing is missing. Combine with `--ignore-unused` to keep strict enforcement on missing/undocumented while still treating unused vars as advisory.
+
+## Typo Suggestions
+
+```bash
+npx envscan-cli --suggest
+```
+
+For each missing variable, fuzzy-matches its name against everything in `.env.example` and — if something is close enough to plausibly be the same variable — prints a suggestion:
+
+```
+✖ MISSING (1) — used in code but not in any .env file
+───────────────────────────────────────────────────────
+❯ DATABASE_URL
+    src/db.js:4
+    💡 Did you mean DB_URL instead of DATABASE_URL?
+```
+
+This is a heuristic (edit-distance based), not a guarantee — it catches renames and typos, not every case, and can occasionally suggest a name that isn't actually related.
+
 ## Auto-Fix
 
 ```bash
@@ -86,11 +126,11 @@ Appends placeholder entries (`VAR_NAME=`) to `.env.example` for anything undocum
 npx envscan-cli --json > report.json
 ```
 
-Emits a single JSON object (`missing`, `undocumented`, `unused`, `secrets`, `gitignoreProtectsEnv`, `meta`) with no ANSI codes or banner — safe to pipe into other tooling, dashboards, or a CI annotation step.
+Emits a single JSON object (`missing`, `undocumented`, `unused`, `secrets`, `gitignoreProtectsEnv`, `strict`, `failReasons`, `meta`) with no ANSI codes or banner — safe to pipe into other tooling, dashboards, or a CI annotation step.
 
 ## CI/CD Usage
 
-`envscan-cli` exits with code `1` whenever any **missing** variables are found, making it a natural pre-deploy gate. Undocumented, unused, and secret findings are reported but do not fail the build by default.
+`envscan-cli` exits with code `1` whenever any **missing** variables are found, making it a natural pre-deploy gate. Undocumented, unused, and secret findings are reported but do not fail the build by default — add `--strict` if you want undocumented/unused vars to fail CI too.
 
 Generate a ready-to-commit GitHub Actions workflow automatically:
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.2
+
+- `--strict` — fails the build (exit code 1) on undocumented and unused vars too, not just missing
+- `--suggest` — fuzzy-matches each missing var against `.env.example` and suggests the closest name ("Did you mean DB_URL instead of DATABASE_URL?")
+- `.envscanignore` — a `.gitignore`-style file for globally ignored variable names/patterns, merged with the config file's `ignore` array
+
 ## 2.0.1
 
 **Fixes a broken published release.** `2.0.0`'s npm tarball did not actually
