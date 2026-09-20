@@ -2,3 +2,8 @@ node_modules/
 .env
 .DS_Store
 *.log
+
+# test-project/.env is a bundled demo fixture (fake, non-sensitive values
+# only) that CI relies on for its regression check — never real secrets,
+# so it's intentionally tracked despite the blanket ".env" rule above.
+!test-project/.env
