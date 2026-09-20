@@ -1,5 +1,9 @@
 # envscan-cli
 
+[![CI](https://github.com/Innocent-Developer/envscan-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Innocent-Developer/envscan-cli/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/envscan-cli.svg)](https://www.npmjs.com/package/envscan-cli)
+[![License: MIT](https://img.shields.io/npm/l/envscan-cli.svg)](./LICENSE)
+
 > Audit your environment variables before they break production.
 
 ## The Problem
@@ -168,6 +172,12 @@ Or wire it in by hand:
 ```
 
 If a required variable is missing, the job fails before your app ever reaches a broken deployment.
+
+## Releases & Provenance
+
+Published releases go out through a dedicated GitHub Actions workflow (`.github/workflows/release.yml`), triggered only when a maintainer publishes a GitHub Release — never automatically on a normal push to `main`.
+
+Publishing uses **npm Trusted Publishing (OIDC)**: the workflow authenticates to npm using a short-lived GitHub-issued token instead of a stored npm access token, and npm automatically attaches **provenance attestations** — a cryptographically verifiable, public record tying the published package to the exact GitHub Actions run, commit, and workflow that built it. You can inspect this on any given version's page at npmjs.com under the "Provenance" tab.
 
 ## Watch Mode
 

@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Covers the floor declared in package.json engines (>=18.0.0)
+        # plus the two most recent LTS lines.
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # No lint/build/type-check scripts exist in package.json — nothing
+      # invented here. No test framework is configured either; the two
+      # steps below are the closest real equivalent for this project:
+      # a packaging sanity check, plus a regression check against the
+      # bundled test-project fixture using the project's own existing
+      # `test:json` script (see package.json "scripts").
+
+      - name: Verify package builds a valid npm tarball
+        run: npm pack --dry-run
+
+      - name: CLI smoke test (--version, --help)
+        run: |
+          node bin/envscan-cli.js --version
+          node bin/envscan-cli.js --help > /dev/null
+
+      - name: Regression check against bundled test-project
+        run: |
+          npm run --silent test:json > /tmp/report.json || true
+          node -e "
+            const fs = require('fs');
+            const r = JSON.parse(fs.readFileSync('/tmp/report.json', 'utf8'));
+            const expected = { missingCount: 2, undocumentedCount: 1, unusedCount: 1 };
+            let ok = true;
+            for (const key of Object.keys(expected)) {
+              if (r.meta[key] !== expected[key]) {
+                console.error('Mismatch on ' + key + ': expected ' + expected[key] + ', got ' + r.meta[key]);
+                ok = false;
+              }
+            }
+            if (!ok) process.exit(1);
+            console.log('Regression check passed:', r.meta);
+          "

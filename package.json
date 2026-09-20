@@ -1,11 +1,19 @@
 {
   "name": "envscan-cli",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Audit your .env variables against your codebase. Catch missing, undocumented and unused vars — with auto-fix, watch mode, JSON/CI output, secret-leak detection and config-driven ignore rules.",
   "type": "module",
   "main": "src/index.js",
   "bin": {
     "envscan-cli": "./bin/envscan-cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Innocent-Developer/envscan-cli.git"
+  },
+  "homepage": "https://github.com/Innocent-Developer/envscan-cli#readme",
+  "bugs": {
+    "url": "https://github.com/Innocent-Developer/envscan-cli/issues"
   },
   "files": [
     "bin",
