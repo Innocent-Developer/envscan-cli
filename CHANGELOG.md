@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.4
+
+Docs/metadata only — no CLI functionality changes.
+
+- Adds the live documentation site, [envscan-cli.abubakkar.dev](https://envscan-cli.abubakkar.dev/), to the README (badge + inline link) and to `package.json`'s `homepage` field (previously pointed at the GitHub README).
+- `.gitignore` fix from the 2.0.3 patch (tracking `test-project/.env`) is included/carried forward.
+
 ## 2.0.3
 
 Release engineering — no CLI functionality changes.

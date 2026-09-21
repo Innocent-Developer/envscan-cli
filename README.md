@@ -3,8 +3,11 @@
 [![CI](https://github.com/Innocent-Developer/envscan-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Innocent-Developer/envscan-cli/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/envscan-cli.svg)](https://www.npmjs.com/package/envscan-cli)
 [![License: MIT](https://img.shields.io/npm/l/envscan-cli.svg)](./LICENSE)
+[![Website](https://img.shields.io/badge/website-envscan--cli.abubakkar.dev-blue)](https://envscan-cli.abubakkar.dev/)
 
 > Audit your environment variables before they break production.
+
+**🔗 Live site: [envscan-cli.abubakkar.dev](https://envscan-cli.abubakkar.dev/)** — usage examples, every flag, and live npm/GitHub stats.
 
 ## The Problem
 
@@ -227,3 +230,7 @@ Issues and pull requests are welcome. If you're proposing a larger change, pleas
 ## License
 
 MIT — Abubakkar Sajid
+
+---
+
+🔗 [envscan-cli.abubakkar.dev](https://envscan-cli.abubakkar.dev/) · [npm](https://www.npmjs.com/package/envscan-cli) · [GitHub Releases](https://github.com/Innocent-Developer/envscan-cli/releases)
