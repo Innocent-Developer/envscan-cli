@@ -235,6 +235,8 @@ PORT=
 
 Finishes by offering to scaffold `envscan-cli.config.js` with a `validate` schema pre-filled from the types you just chose. Requires an interactive terminal — it won't run inside a plain piped/non-TTY shell.
 
+`--init` also requires **Node.js >=20.17** (or `^22.13`/`>=23.5`) — its underlying prompt library, `@inquirer/prompts`, doesn't support Node 18. Every other envscan-cli command works fine on Node 18+; only `--init` is affected, and it fails with a clear message rather than a crash if you're on an unsupported version.
+
 ## HTML Reports
 
 ```bash

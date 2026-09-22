@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.6
+
+Fixes a real bug in 2.0.5, caught by CI: running **any** command (even `--version`) on Node 18 crashed with `SyntaxError: The requested module 'node:util' does not provide an export named 'styleText'`. Root cause: `bin/envscan-cli.js` statically imported `wizard.js`, which statically imports `@inquirer/prompts` — a dependency that requires Node `>=20.17` (or `^22.13`/`>=23.5`) and hard-fails to even load on Node 18. A static import meant that failure happened at process startup, before any command-specific logic ran, breaking the entire CLI for Node 18 users regardless of which command they invoked.
+
+- `wizard.js` is now loaded lazily (dynamic `import()`) only when `--init` is actually used.
+- Every other command — `--version`, the normal audit, `--fix`, `--json`, `--watch`, `--strict`, `--suggest`, `--validate-format`, `--compare`, `--stats`, `--report html`, `init-ci`, `install-hook`, `uninstall-hook` — now works correctly on Node 18 again.
+- `--init` on an unsupported Node version now fails with a clear one-line message naming the actual Node requirement, instead of a raw stack trace.
+- Verified by simulating the exact Node-18 import failure locally (not just reasoning about it) and confirming every other command still passes, then confirming `--init` still works normally on a supported Node version.
+
 ## 2.0.5
 
 Seven new features, all additive — existing behavior and output are unchanged (verified against the baseline demo before and after).

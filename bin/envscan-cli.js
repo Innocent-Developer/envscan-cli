@@ -24,7 +24,11 @@ import { compareEnvFiles } from '../src/compare.js';
 import { calculateHealthScore } from '../src/scorer.js';
 import { generateHtmlReport } from '../src/htmlreport.js';
 import { installHook, uninstallHook } from '../src/hookinstaller.js';
-import { runInitWizard } from '../src/wizard.js';
+// runInitWizard is intentionally NOT statically imported here: it pulls in
+// @inquirer/prompts, which requires Node >=20.17 (or ^22.13/>=23.5) and
+// throws a hard SyntaxError on Node 18 (missing node:util's styleText).
+// A static import would break every command, not just --init, for anyone
+// on Node 18 — so it's loaded lazily, only when --init is actually used.
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -151,8 +155,23 @@ async function main(options) {
   }
 
   // --init: interactive wizard is a self-contained mode — no banner, no
-  // config loading, no normal audit flow.
+  // config loading, no normal audit flow. Loaded lazily (see the import
+  // comment above) so Node <20.17 only fails here, not on every command.
   if (options.init) {
+    let runInitWizard;
+    try {
+      ({ runInitWizard } = await import('../src/wizard.js'));
+    } catch (err) {
+      const message = '✖ --init requires Node.js >=20.17 (or ^22.13/>=23.5) — it depends on @inquirer/prompts, '
+        + `which isn't supported on your current version (${process.version}). Every other envscan-cli command works fine on your Node version.`;
+      if (jsonMode) {
+        console.log(JSON.stringify({ error: message, nodeVersion: process.version }, null, 2));
+      } else {
+        console.log(chalk.red.bold(message));
+      }
+      process.exitCode = 1;
+      return;
+    }
     if (!jsonMode) console.log('');
     await runInitWizard(targetDir);
     return;
