@@ -16,4 +16,18 @@ export default {
 
   // Scan real .env values for things that look like live credentials.
   secretDetection: true,
+
+  // Vars that must exist in .env no matter what — bypasses `ignore`
+  // entirely and always fails the build (exit 1) if absent, checked
+  // with `--validate-format` on. See "Required Variables" in the README.
+  required: [],
+
+  // Type schema used by --validate-format. Supported types: 'string',
+  // 'number', 'boolean', 'url', 'email'. Only checked when a var is
+  // both declared here AND has a value in .env.
+  validate: {
+    // PORT: 'number',
+    // APP_URL: 'url',
+    // ADMIN_EMAIL: 'email',
+  },
 };

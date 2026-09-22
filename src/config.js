@@ -9,6 +9,8 @@ const DEFAULT_CONFIG = {
   exampleFile: '.env.example',
   ignoreUnused: false,
   secretDetection: true,
+  required: [], // var names that must exist in .env; always fails the build if absent
+  validate: {}, // { VAR_NAME: 'number'|'boolean'|'url'|'email'|'string' } — used by --validate-format
 };
 
 /**
@@ -58,6 +60,8 @@ export async function loadConfig(dir, cliOverrides = {}) {
   };
 
   merged.ignore = Array.isArray(merged.ignore) ? merged.ignore : [];
+  merged.required = Array.isArray(merged.required) ? merged.required : [];
+  merged.validate = (merged.validate && typeof merged.validate === 'object') ? merged.validate : {};
   merged.sourceFile = sourceFile;
 
   return merged;

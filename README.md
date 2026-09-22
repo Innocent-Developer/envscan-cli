@@ -15,7 +15,9 @@ Environment variables rot silently. A teammate adds `process.env.STRIPE_KEY` in 
 
 ## What It Catches
 
+- 🔴 **Required + missing** — variables you've explicitly marked `required` in config; always fails the build, even if `ignore`d
 - ✖ **Missing** — referenced in code via `process.env.X`, but not defined in any `.env` file
+- ✖ **Invalid format** — a `.env` value that doesn't match the type you declared for it (number, url, boolean, email)
 - ⚠ **Undocumented** — defined in `.env`, but missing from `.env.example` (so new contributors won't know it exists)
 - ○ **Unused** — defined in `.env`, but never referenced anywhere in code
 - 🔒 **Potential secret leaks** — real-looking credential values sitting in `.env` (known formats + high-entropy heuristics)
@@ -54,6 +56,11 @@ npx envscan-cli --dir ./backend
 | `-w, --watch` | Watch the project and re-run automatically on every change |
 | `--strict` | Fail the build on undocumented and unused vars too, not just missing |
 | `--suggest` | Suggest the closest `.env.example` name for each missing var (typo detection) |
+| `--validate-format` | Validate `.env` values against the `validate` schema in your config file |
+| `--compare <fileA> <fileB>` | Compare two `.env` files instead of running the normal audit |
+| `--stats` | Show a 0-100 environment-hygiene health score |
+| `--report <format>` | Generate a shareable report file (supported: `html`) |
+| `--init` | Run the interactive setup wizard to generate `.env.example` and a config file |
 | `-v, --version` | Show the installed version |
 | `-h, --help` | Show help and usage examples |
 
@@ -119,6 +126,137 @@ For each missing variable, fuzzy-matches its name against everything in `.env.ex
 
 This is a heuristic (edit-distance based), not a guarantee — it catches renames and typos, not every case, and can occasionally suggest a name that isn't actually related.
 
+## Required Variables
+
+In your config file:
+
+```js
+export default {
+  required: ['DATABASE_URL', 'JWT_SECRET', 'PORT'],
+};
+```
+
+Any variable listed here is checked directly against your `.env` files — independent of whether it's referenced in code, and independent of any `ignore` pattern that would otherwise suppress it. If it's absent, it's reported in its own section and **always** fails the build (exit code `1`), no matter what other flags are set:
+
+```
+🔴 REQUIRED + MISSING (1)
+────────────────────────────
+❯ DATABASE_URL (marked required in config)
+    src/db.js:3
+```
+
+## Format Validation
+
+In your config file:
+
+```js
+export default {
+  validate: {
+    PORT: 'number',
+    APP_URL: 'url',
+    DEBUG: 'boolean',
+    ADMIN_EMAIL: 'email',
+  },
+};
+```
+
+Then run:
+
+```bash
+npx envscan-cli --validate-format
+```
+
+Reads the actual values from your `.env` and checks them against the declared type (`string`, `number`, `boolean`, `url`, `email`):
+
+```
+✖ INVALID FORMAT (2)
+────────────────────────────────
+❯ PORT → expected number, got "abc"
+❯ APP_URL → expected valid URL, got "localhost"
+```
+
+A variable only gets checked if it's both declared in `validate` and actually present with a value — an absent variable is the MISSING check's job, not this one's. Invalid formats exit with code **`2`**, kept separate from missing vars' exit code `1` — unless something is also missing, in which case exit `1` takes priority (a fully broken config beats a badly-typed one).
+
+## Comparing Environments
+
+```bash
+npx envscan-cli --compare .env.staging .env.production
+```
+
+A standalone mode — runs instead of the normal audit, not alongside it. Reads both files and reports what's only in one, and what's present in both but holds a different value:
+
+```
+In .env.staging but not .env.production (1)
+❯ DEBUG
+
+In .env.production but not .env.staging (1)
+❯ STRIPE_KEY
+
+Present in both, different value (2)
+❯ DB_URL  .env.staging="postgres://staging"  .env.production="postgres://prod"
+❯ PORT  .env.staging="3000"  .env.production="8080"
+
+────────────────────────────────
+0 match  ·  2 differ  ·  2 missing
+```
+
+Useful as a pre-deploy sanity check — confirm staging and production haven't drifted apart before promoting a release. File paths are resolved relative to `--dir`.
+
+## Health Score
+
+```bash
+npx envscan-cli --stats
+```
+
+Rolls the audit results into a single 0-100 score:
+
+```
+┌─────────────────────────┐
+│  Env Health Score: 73   │
+│  ████████░░  Good       │
+└─────────────────────────┘
+```
+
+Starts at 100 and deducts: up to 40 points for missing/required-missing vars (-10 each), up to 20 for undocumented (-5 each), up to 10 for unused (-2 each), 15 if `.env` isn't gitignored, 20 if any secret leak is detected, and 5 if no `.env.example` exists at all. 90-100 is Excellent, 70-89 Good, 50-69 Fair, below 50 Critical. With `--json`, the score is included as a `healthScore` field instead of the boxed display.
+
+## Interactive Setup Wizard
+
+```bash
+npx envscan-cli --init
+```
+
+For a project with no `.env.example` yet. Scans your codebase for every `process.env.X` reference, then walks you through each one: whether to document it, what type it is (`string`/`number`/`boolean`/`url`/`email`), and an optional description — then writes a fully commented `.env.example`:
+
+```
+# Server port number
+# Type: number
+PORT=
+```
+
+Finishes by offering to scaffold `envscan-cli.config.js` with a `validate` schema pre-filled from the types you just chose. Requires an interactive terminal — it won't run inside a plain piped/non-TTY shell.
+
+## HTML Reports
+
+```bash
+npx envscan-cli --report html
+```
+
+Writes a single self-contained `envscan-report.html` — no external assets, no network calls, safe to open offline or attach to a PR/ticket. Includes the health-score gauge, every finding color-coded by severity, and clickable `vscode://` deep links straight to each `file:line` reference (opens in VS Code if it's your OS handler for that URI scheme).
+
+## Pre-commit Hook
+
+```bash
+npx envscan-cli install-hook
+```
+
+Installs a git hook at `.git/hooks/pre-commit` that runs `envscan-cli --no-banner --ignore-unused` before every commit and blocks it if any variable is missing. If a pre-commit hook already exists and wasn't installed by envscan-cli, it's backed up first rather than overwritten.
+
+```bash
+npx envscan-cli uninstall-hook
+```
+
+Removes the hook — and restores your previous one automatically if a backup exists. Refuses to touch a hook it didn't install itself.
+
 ## Auto-Fix
 
 ```bash
@@ -133,7 +271,7 @@ Appends placeholder entries (`VAR_NAME=`) to `.env.example` for anything undocum
 npx envscan-cli --json > report.json
 ```
 
-Emits a single JSON object (`missing`, `undocumented`, `unused`, `secrets`, `gitignoreProtectsEnv`, `strict`, `failReasons`, `meta`) with no ANSI codes or banner — safe to pipe into other tooling, dashboards, or a CI annotation step.
+Emits a single JSON object (`requiredMissing`, `missing`, `invalidFormat`, `undocumented`, `unused`, `secrets`, `gitignoreProtectsEnv`, `strict`, `exitCode`, `failReasons`, `meta`, plus `healthScore` and `reportPath` when `--stats`/`--report` are used) with no ANSI codes or banner — safe to pipe into other tooling, dashboards, or a CI annotation step. `--compare` produces a differently-shaped JSON object (`compare`, `summary`) since it's a standalone mode rather than part of the normal audit.
 
 ## CI/CD Usage
 

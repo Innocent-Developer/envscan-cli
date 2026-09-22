@@ -1,7 +1,7 @@
 {
   "name": "envscan-cli",
-  "version": "2.0.4",
-  "description": "Audit your .env variables against your codebase. Catch missing, undocumented and unused vars — with auto-fix, watch mode, JSON/CI output, secret-leak detection and config-driven ignore rules.",
+  "version": "2.0.5",
+  "description": "Audit your .env variables against your codebase. Catch missing, undocumented and unused vars — with auto-fix, watch mode, JSON/CI output, secret-leak detection, format validation, env comparison, a health score, an interactive setup wizard, HTML reports, and a pre-commit hook.",
   "type": "module",
   "main": "src/index.js",
   "bin": {
@@ -25,7 +25,9 @@
     "test:demo": "node bin/envscan-cli.js --dir ./test-project",
     "test:fix": "node bin/envscan-cli.js --dir ./test-project --fix",
     "test:json": "node bin/envscan-cli.js --dir ./test-project --json",
-    "test:watch": "node bin/envscan-cli.js --dir ./test-project --watch"
+    "test:watch": "node bin/envscan-cli.js --dir ./test-project --watch",
+    "test:stats": "node bin/envscan-cli.js --dir ./test-project --stats",
+    "test:report": "node bin/envscan-cli.js --dir ./test-project --report html"
   },
   "keywords": [
     "env",
@@ -47,6 +49,7 @@
   "dependencies": {
     "@babel/parser": "^7.24.0",
     "@babel/traverse": "^7.24.0",
+    "@inquirer/prompts": "^8.7.2",
     "boxen": "^7.1.1",
     "chalk": "^5.3.0",
     "chokidar": "^3.6.0",

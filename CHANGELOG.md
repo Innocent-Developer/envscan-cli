@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.5
+
+Seven new features, all additive — existing behavior and output are unchanged (verified against the baseline demo before and after).
+
+- **`required` config + 🔴 REQUIRED + MISSING** — vars marked `required` in config are checked independent of code usage and `ignore` patterns, and always fail the build if absent.
+- **`--validate-format`** — validates `.env` values against a `validate: { NAME: type }` schema in config (`string`/`number`/`boolean`/`url`/`email`). Exits with code `2`, distinct from missing vars' exit code `1` (missing takes priority if both occur).
+- **`--compare <fileA> <fileB>`** — standalone mode comparing two `.env` files: only-in-A, only-in-B, and differing values.
+- **`--stats`** — 0-100 environment-hygiene health score with a boxed gauge; included as `healthScore` in `--json` output.
+- **`--init`** — interactive setup wizard (`@inquirer/prompts`) that scans for `process.env` usage and walks through generating a commented `.env.example` plus an optional config file.
+- **`--report html`** — single self-contained `envscan-report.html` with a health-score gauge, color-coded findings, and clickable `vscode://` file:line links.
+- **`install-hook` / `uninstall-hook`** — pre-commit git hook that blocks commits with missing env vars; backs up and restores any pre-existing foreign hook rather than overwriting it.
+- New dependency: `@inquirer/prompts`.
+
 ## 2.0.4
 
 Docs/metadata only — no CLI functionality changes.
